@@ -16,8 +16,17 @@ class Schroedinger{
         this.dkx = Math.pi / (box_x_len / 2.0);
         this.dx = box_x_len / resN;
 
+        // create array with x positions
+        let zeros = require("zeros");
+        this.x = zeros([1, this.resN])
+        fill(this.x,
+            function(i, j){
+                return this.dx * i + this.xSt;
+            }
+        )
+
         // fft has a different ordering of its x space
-        this.kx = np.fft.fftfreq(resN, d=1.0 / ( this.dkx * resN));
+        this.kx = this.fftfreq(resN, d=1.0 / ( this.dkx * resN));
 
         this.k_squared = this.kx ** 2;
 
@@ -27,21 +36,30 @@ class Schroedinger{
         else{
             this.U =  math.complex(0, -1.0);
         }
-
     }
 
     get_norm(p){
        return Math.sum(Math.abs(this.psi_val) ** p) * this.dx
     }
 
-    timestep(){
-        // create array with x positions
-        let zeros = require("zeros");
-        this.x = zeros([1, this.resN])
-        fill(this.x, function(i, j){
-            return this.dx * i + this.xSt;
-        })
+    fftfreq(resN, d){
+        // f = [0, 1, ...,   n/2-1,     -n/2, ..., -1] / (d*n)   if n is even
+        // f = [0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)   if n is odd
+        if (resN % 2 == 0){
+            last_before_minus = resN / 2.0
+        } else{
+            last_before_minus = (resN - 1)/ 2.0
+        }
+        // create arrays with [0, 1, ...,   n/2-1]
+        k_over_0 = np.arange(0.0, last_before_minus, 1.0)
+        // create arrays with [-n/2, -(n-1)/2, ..., -1]
+        k_under_0 = np.arange(-last_before_minus, 0.0, 1.0)
 
+        // put both arrays together to get [0, 1, ..., n/2-1, -n/2, ..., -1]
+        return np.concatenate((k_over_0, k_under_0), axis=0) * this.dkx
+    }
+
+    timestep(){
         // apply functions psi and V to the array of x positions
         this.psi_val = this.psi(this.x);
         this.V_val = this.V(this.x);
